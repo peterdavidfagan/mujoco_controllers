@@ -1,0 +1,100 @@
+arm:
+  _target_: rearrangement_benchmark.models.arms.franka_emika.FER
+  relative_robot_mjcf_path: "./mujoco_menagerie/franka_emika_panda/panda_nohand.xml" # relative to scripts directory
+  actuator_config:
+    type: "velocity"
+    default:
+      ctrlrange: "-2.175 2.175"
+      forcerange: "-87 87"
+      kv: "0"
+    joint1:
+      ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
+      forcerange: ${robots.arm.actuator_config.default.forcerange}
+      kv: 10
+    joint2:
+      ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
+      forcerange: ${robots.arm.actuator_config.default.forcerange}
+      kv: ${robots.arm.actuator_config.default.kv}
+    joint3:
+      ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
+      forcerange: ${robots.arm.actuator_config.default.forcerange}
+      kv: ${robots.arm.actuator_config.default.kv}
+    joint4:
+      ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
+      forcerange: ${robots.arm.actuator_config.default.forcerange}
+      kv: ${robots.arm.actuator_config.default.kv}
+    joint5:
+      ctrlrange: "-2.61 2.61"
+      forcerange: "-12 12"
+      kv: ${robots.arm.actuator_config.default.kv}
+    joint6:
+      ctrlrange: "-2.61 2.61"
+      forcerange: "-12 12"
+      kv: ${robots.arm.actuator_config.default.kv}
+    joint7:
+      ctrlrange: "-2.61 2.61"
+      forcerange: "-12 12"
+      kv: ${robots.arm.actuator_config.default.kv}
+    
+    joint_actuator_mapping:
+      joint1: "joint1"
+      joint2: "joint2"
+      joint3: "joint3"
+      joint4: "joint4"
+      joint5: "joint5"
+      joint6: "joint6"
+      joint7: "joint7"
+  
+  sensor_config:
+    type: "jointpos"
+    pos_joint1:
+      name: pos_joint1 
+      joint: joint1
+    pos_joint2:
+      name: pos_joint2
+      joint: joint2
+    pos_joint3:
+      name: pos_joint3
+      joint: joint3
+    pos_joint4:
+      name: pos_joint4
+      joint: joint4
+    pos_joint5:
+      name: pos_joint5
+      joint: joint5
+    pos_joint6:
+      name: pos_joint6
+      joint: joint6
+    pos_joint7:
+      name: pos_joint7
+      joint: joint7
+
+    joint_sensor_mapping:
+      pos_joint1: "joint1"
+      pos_joint2: "joint2"
+      pos_joint3: "joint3"
+      pos_joint4: "joint4"
+      pos_joint5: "joint5"
+      pos_joint6: "joint6"
+      pos_joint7: "joint7"
+        
+    ## torque based motor
+    #type: "motor"
+    #high_torque_motor:
+    #  ctrlrange: '-87 87'
+    #  forcerange: '-87 87'
+    #low_torque_motor:
+    #  ctrlrange: '-12 12'
+    #  forcerange: '-12 12'
+    #joint_actuator_mapping:
+    #  joint1: "high_torque_motor"
+    #  joint2: "high_torque_motor"
+    #  joint3: "high_torque_motor"
+    #  joint4: "high_torque_motor"
+    #  joint5: "low_torque_motor"
+    #  joint6: "low_torque_motor"
+    #  joint7: "low_torque_motor"
+
+
+gripper:
+  _target_: dm_robotics.moma.models.end_effectors.robot_hands.robotiq_2f85.Robotiq2F85

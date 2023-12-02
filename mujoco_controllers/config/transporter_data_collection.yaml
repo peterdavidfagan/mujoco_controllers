@@ -1,0 +1,7 @@
+visualize_base_scene: False
+
+defaults:
+  - props: default
+  - cameras: transporter_data_collection
+  - robots: default
+  - task: default
