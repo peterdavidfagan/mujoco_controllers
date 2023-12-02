@@ -1,7 +1,0 @@
-visualize_base_scene: False
-
-defaults:
-  - props: default
-  - cameras: default
-  - robots: default
-  - task: tuning
