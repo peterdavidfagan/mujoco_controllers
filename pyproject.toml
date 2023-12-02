@@ -1,0 +1,51 @@
+[project]
+name = "rearrangement_benchmark"
+version = "0.0.0"
+description = "A repository for debugging controller implementations applied to mujoco models."
+authors = [
+	{ name = "Peter David Fagan", email = "peterdavidfagan@gmail.com" }
+]
+readme = "README.md"
+
+[tool.poetry]
+name = "mujoco-controllers"
+version = "0.0.0"
+description = "A repository for debugging controller implementations applied to mujoco models."
+license = "Apache-2.0"
+authors = [
+	"Peter David Fagan <peterdavidfagan@gmail.com>"
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.10.6"
+numpy = "^1.16.0"
+mujoco = "3.0.0"
+dm-control = "1.0.15"
+dm_robotics-moma = "0.6.0"
+dm_robotics-transformations = "0.6.0"
+dm_robotics-agentflow = "0.6.0"
+dm_robotics-geometry = "0.6.0"
+dm_robotics-manipulation = "0.6.0"
+dm_robotics-controllers = "0.6.0"
+ikpy = "3.3.4"
+pillow = "10.0.0"
+jax = "^0.4.14"
+jaxlib = "^0.4.14"
+matplotlib = "^3.7.2"
+hydra-core = "^1.3.2"
+pytest = "^7.4.2"
+lark = "^1.1.7"
+profilehooks = "^1.12.0"
+notebook = "^7.0.6"
+plotly = "^5.18.0"
+pandas = "^2.1.3"
+ipywidgets = "^8.1.1"
+jupyterlab = "^4.0.9"
+simple-pid = "^2.0.0"
+
+[tool.black]
+line-length = 120
+
+[tool.flake8]
+max-line-length = 120
