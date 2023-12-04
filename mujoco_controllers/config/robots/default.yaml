@@ -1,6 +1,6 @@
 arm:
   _target_: rearrangement_benchmark.models.arms.franka_emika.FER
-  relative_robot_mjcf_path: "./mujoco_menagerie/franka_emika_panda/panda_joint1.xml" # relative to scripts directory
+  relative_robot_mjcf_path: "./mujoco_menagerie/franka_emika_panda/panda_nohand.xml" # relative to scripts directory
   actuator_config:
     type: "general"
     default:
@@ -17,71 +17,71 @@ arm:
       biastype: ${robots.arm.actuator_config.default.biastype}
       ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
       forcerange: ${robots.arm.actuator_config.default.forcerange}
-      gainprm: "1.5"
-      biasprm: "0 0 0"
-        # joint2:
-        #   ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
-        #   forcelimited: ${robots.arm.actuator_config.default.forcelimited}
-        #   dyntype: ${robots.arm.actuator_config.default.dyntype}
-        #   biastype: ${robots.arm.actuator_config.default.biastype}
-        #   ctrlrange: "-1.7628 1.7628"
-        #   forcerange: ${robots.arm.actuator_config.default.forcerange}
-        #   gainprm: "4500"
-        #   biasprm: "0 -4500 -450"
-        # joint3:
-        #   ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
-        #   forcelimited: ${robots.arm.actuator_config.default.forcelimited}
-        #   dyntype: ${robots.arm.actuator_config.default.dyntype}
-        #   biastype: ${robots.arm.actuator_config.default.biastype}
-        #   ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
-        #   forcerange: ${robots.arm.actuator_config.default.forcerange}
-        #   gainprm: "4500"
-        #   biasprm: "0 -3500 -350"
-        # joint4:
-        #   ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
-        #   forcelimited: ${robots.arm.actuator_config.default.forcelimited}
-        #   dyntype: ${robots.arm.actuator_config.default.dyntype}
-        #   biastype: ${robots.arm.actuator_config.default.biastype}
-        #   ctrlrange: -3.0718 -0.0698
-        #   forcerange: ${robots.arm.actuator_config.default.forcerange}
-        #   gainprm: "4500"
-        #   biasprm: "0 -3500 -350"
-        # joint5:
-        #   ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
-        #   forcelimited: ${robots.arm.actuator_config.default.forcelimited}
-        #   dyntype: ${robots.arm.actuator_config.default.dyntype}
-        #   biastype: ${robots.arm.actuator_config.default.biastype}
-        #   ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
-        #   forcerange: "-12 12"
-        #   gainprm: "2000"
-        #   biasprm: "0 -2000 -200"
-        # joint6:
-        #   ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
-        #   forcelimited: ${robots.arm.actuator_config.default.forcelimited}
-        #   dyntype: ${robots.arm.actuator_config.default.dyntype}
-        #   biastype: ${robots.arm.actuator_config.default.biastype}
-        #   ctrlrange: "-0.0175 3.7525"
-        #   forcerange: "-12 12"
-        #   gainprm: "2000"
-        #   biasprm: "0 -2000 -200"
-        # joint7:
-        #   ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
-        #   forcelimited: ${robots.arm.actuator_config.default.forcelimited}
-        #   dyntype: ${robots.arm.actuator_config.default.dyntype}
-        #   biastype: ${robots.arm.actuator_config.default.biastype}
-        #   ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
-        #   forcerange: "-12 12"
-        #   gainprm: "2000"
-        #   biasprm: "0 -2000 -200"
+      gainprm: "4500"
+      biasprm: "0 -4500 -450"
+    joint2:
+      ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
+      forcelimited: ${robots.arm.actuator_config.default.forcelimited}
+      dyntype: ${robots.arm.actuator_config.default.dyntype}
+      biastype: ${robots.arm.actuator_config.default.biastype}
+      ctrlrange: "-1.7628 1.7628"
+      forcerange: ${robots.arm.actuator_config.default.forcerange}
+      gainprm: "4500"
+      biasprm: "0 -4500 -450"
+    joint3:
+      ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
+      forcelimited: ${robots.arm.actuator_config.default.forcelimited}
+      dyntype: ${robots.arm.actuator_config.default.dyntype}
+      biastype: ${robots.arm.actuator_config.default.biastype}
+      ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
+      forcerange: ${robots.arm.actuator_config.default.forcerange}
+      gainprm: "3500"
+      biasprm: "0 -3500 -350"
+    joint4:
+      ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
+      forcelimited: ${robots.arm.actuator_config.default.forcelimited}
+      dyntype: ${robots.arm.actuator_config.default.dyntype}
+      biastype: ${robots.arm.actuator_config.default.biastype}
+      ctrlrange: -3.0718 -0.0698
+      forcerange: ${robots.arm.actuator_config.default.forcerange}
+      gainprm: "3500"
+      biasprm: "0 -3500 -350"
+    joint5:
+      ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
+      forcelimited: ${robots.arm.actuator_config.default.forcelimited}
+      dyntype: ${robots.arm.actuator_config.default.dyntype}
+      biastype: ${robots.arm.actuator_config.default.biastype}
+      ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
+      forcerange: "-12 12"
+      gainprm: "2000"
+      biasprm: "0 -2000 -200"
+    joint6:
+      ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
+      forcelimited: ${robots.arm.actuator_config.default.forcelimited}
+      dyntype: ${robots.arm.actuator_config.default.dyntype}
+      biastype: ${robots.arm.actuator_config.default.biastype}
+      ctrlrange: "-0.0175 3.7525"
+      forcerange: "-12 12"
+      gainprm: "2000"
+      biasprm: "0 -2000 -200"
+    joint7:
+      ctrllimited: ${robots.arm.actuator_config.default.ctrllimited}
+      forcelimited: ${robots.arm.actuator_config.default.forcelimited}
+      dyntype: ${robots.arm.actuator_config.default.dyntype}
+      biastype: ${robots.arm.actuator_config.default.biastype}
+      ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
+      forcerange: "-12 12"
+      gainprm: "2000"
+      biasprm: "0 -2000 -200"
 
     joint_actuator_mapping:
       joint1: "joint1"
-        #joint2: "joint2"
-        #joint3: "joint3"
-        #joint4: "joint4"
-        #joint5: "joint5"
-        #joint6: "joint6"
-        #joint7: "joint7"
+      joint2: "joint2"
+      joint3: "joint3"
+      joint4: "joint4"
+      joint5: "joint5"
+      joint6: "joint6"
+      joint7: "joint7"
   
   sensor_config:
     type: "jointpos"
@@ -109,75 +109,12 @@ arm:
 
     joint_sensor_mapping:
       pos_joint1: "joint1"
-        #pos_joint2: "joint2"
-        #pos_joint3: "joint3"
-        #pos_joint4: "joint4"
-        #pos_joint5: "joint5"
-        #pos_joint6: "joint6"
-        #pos_joint7: "joint7"
+      pos_joint2: "joint2"
+      pos_joint3: "joint3"
+      pos_joint4: "joint4"
+      pos_joint5: "joint5"
+      pos_joint6: "joint6"
+      pos_joint7: "joint7"
         
-      # velocity actuators
-      # actuator_config:
-      #   type: "velocity"
-      #   default:
-      #     ctrlrange: "-2.175 2.175"
-      #     forcerange: "-87 87"
-      #     kv: "50"
-      #   joint1:
-      #     ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
-      #     forcerange: ${robots.arm.actuator_config.default.forcerange}
-      #     kv: ${robots.arm.actuator_config.default.kv}
-      #   joint2:
-      #     ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
-      #     forcerange: ${robots.arm.actuator_config.default.forcerange}
-      #     kv: ${robots.arm.actuator_config.default.kv}
-      #   joint3:
-      #     ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
-      #     forcerange: ${robots.arm.actuator_config.default.forcerange}
-      #     kv: ${robots.arm.actuator_config.default.kv}
-      #   joint4:
-      #     ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
-      #     forcerange: ${robots.arm.actuator_config.default.forcerange}
-      #     kv: ${robots.arm.actuator_config.default.kv}
-      #   joint5:
-      #     ctrlrange: "-2.61 2.61"
-      #     forcerange: "-12 12"
-      #     kv: ${robots.arm.actuator_config.default.kv}
-      #   joint6:
-      #     ctrlrange: "-2.61 2.61"
-      #     forcerange: "-12 12"
-      #     kv: ${robots.arm.actuator_config.default.kv}
-      #   joint7:
-      #     ctrlrange: "-2.61 2.61"
-      #     forcerange: "-12 12"
-      #     kv: ${robots.arm.actuator_config.default.kv}
-
-      #   joint_actuator_mapping:
-      #     joint1: "joint1"
-      #     joint2: "joint2"
-      #     joint3: "joint3"
-      #     joint4: "joint4"
-      #     joint5: "joint5"
-      #     joint6: "joint6"
-      #     joint7: "joint7"
-
-    ## torque based motor
-    #type: "motor"
-    #high_torque_motor:
-    #  ctrlrange: '-87 87'
-    #  forcerange: '-87 87'
-    #low_torque_motor:
-    #  ctrlrange: '-12 12'
-    #  forcerange: '-12 12'
-    #joint_actuator_mapping:
-    #  joint1: "high_torque_motor"
-    #  joint2: "high_torque_motor"
-    #  joint3: "high_torque_motor"
-    #  joint4: "high_torque_motor"
-    #  joint5: "low_torque_motor"
-    #  joint6: "low_torque_motor"
-    #  joint7: "low_torque_motor"
-
-
 gripper:
   _target_: dm_robotics.moma.models.end_effectors.robot_hands.robotiq_2f85.Robotiq2F85
