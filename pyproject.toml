@@ -1,5 +1,5 @@
 [project]
-name = "rearrangement_benchmark"
+name = "mujoco_controllers"
 version = "0.0.0"
 description = "A repository for debugging controller implementations applied to mujoco models."
 authors = [
@@ -8,7 +8,7 @@ authors = [
 readme = "README.md"
 
 [tool.poetry]
-name = "mujoco-controllers"
+name = "mujoco_controllers"
 version = "0.0.0"
 description = "A repository for debugging controller implementations applied to mujoco models."
 license = "Apache-2.0"
