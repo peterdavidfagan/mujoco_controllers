@@ -1,0 +1,14 @@
+osc:
+  gains:
+    position:
+      damping_ratio: 1.0
+      kp: 200.0
+      kd: 0 # calculate from damping ratio
+    orientation:
+      damping_ratio: 1.0
+      kp: 200.0
+      kd: 0 # calculate from damping ratio
+
+  convergence:
+    position_threshold: 1e-3
+    orientation_threshold: 1e-2

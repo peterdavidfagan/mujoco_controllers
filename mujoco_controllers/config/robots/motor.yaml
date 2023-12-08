@@ -1,3 +1,6 @@
+arm_configs:
+  ready: [0, -0.785, 0, -2.356, 0, 1.571, 0.785]
+
 arm:
   _target_: mujoco_controllers.models.arms.franka_emika.FER
   relative_robot_mjcf_path: "./mujoco_menagerie/franka_emika_panda/panda_nohand.xml" # relative to scripts directory
