@@ -1,6 +1,6 @@
 FROM python:3.10.6
 RUN mkdir /app 
-COPY ../** /app
+COPY . /app
 WORKDIR /app
 ENV PYTHONPATH=${PYTHONPATH}:${PWD} 
 RUN pip3 install poetry
