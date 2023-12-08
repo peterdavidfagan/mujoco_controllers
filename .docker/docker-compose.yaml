@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  mujoco:
+    image: ghcr.io/peterdavidfagan/mujoco_controllers:latest
+    build:
+      context: ../
+      dockerfile: .docker/Dockerfile
+    environment:
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${DOCKER_XAUTH}
+    volumes:
+      - /tmp/.X11-unix:/tml/.X11-unix:rw
+      - ${DOCKER_XAUTH}:${DOCKER_XAUTH}
+    command: python mujoco_controllers/osc.py
