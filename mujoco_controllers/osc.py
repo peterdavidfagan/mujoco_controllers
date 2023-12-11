@@ -20,6 +20,7 @@ from dm_robotics.transformations.transformations import mat_to_quat, quat_to_mat
 from dm_robotics.transformations import transformations as tr
 
 from mujoco_controllers.build_env import construct_physics
+from mujoco_controllers.trajectory import LinearTrajectory
 
 from rearrangement_benchmark.env_components.props import Rectangle
 from ikpy.chain import Chain
@@ -28,17 +29,20 @@ from hydra.utils import instantiate
 
 class OSC(object):
 
-    def __init__(self, physics, passive_view, arm, controller_config):
+    def __init__(self, physics, arm, hand, controller_config, passive_view=None):
         # core simulation instance
         self.physics = physics
         self.passive_view = passive_view
 
         # controller gains
         self.controller_gains = controller_config["gains"]
+        self.nullspace_config = np.array(controller_config["nullspace"]["joint_config"])
         self.position_threshold = controller_config["convergence"]["position_threshold"]
         self.orientation_threshold = controller_config["convergence"]["orientation_threshold"]
         
         # get site and actuator details from arm
+        self.arm = arm
+        self.hand = hand
         self.eef_site = arm.attachment_site
         self.arm_joints = arm.joints
         self.arm_joint_ids = np.array(physics.bind(self.arm_joints).dofadr)
@@ -48,7 +52,7 @@ class OSC(object):
         self._eef_target_velocity = None
         self._eef_target_quat = None
         self._eef_target_angular_velocity = None
-        self._gripper_status = "open"
+        self._gripper_status = "idle" # idle, opening, closing
         
         # control equation variables
         self._eef_mass_matrix = None
@@ -91,7 +95,8 @@ class OSC(object):
         M = np.zeros((nv, nv))
         mujoco.mj_fullM(self.physics.model.ptr, M, self.physics.data.qM)
         M = M[self.arm_joint_ids, :][:, self.arm_joint_ids]
-    
+        self.arm_mass_matrix = M
+
         M_inv = np.linalg.inv(M)
         Mx_inv = np.dot(self._eef_jacobian, np.dot(M_inv, self._eef_jacobian.T))
         if abs(np.linalg.det(Mx_inv)) >= 1e-2:
@@ -129,6 +134,15 @@ class OSC(object):
     def _calc_damping(self, gains: Dict[str, float]) -> np.ndarray:
         return gains["damping_ratio"] * 2 * np.sqrt(gains["kp"])
 
+    def current_orientation_error(self):
+        eef_orientation = self.physics.bind(self.eef_site).xmat.reshape(3, 3)
+        eef_orientation = tr.mat_to_quat(eef_orientation)
+        return np.max(abs(self._orientation_error(eef_orientation, self.eef_target_quat)))
+
+    def current_position_error(self):
+        eef_position = self.physics.bind(self.eef_site).xpos
+        return  np.linalg.norm(eef_position - self.eef_target_position)
+
     def pd_control(
         self,
         x: np.array,
@@ -143,7 +157,10 @@ class OSC(object):
                 gains = self.controller_gains["position"]
             except:
                 raise ValueError("Invalid controller gains")
-            error = gains["kp"] * (x_desired - x) + self._calc_damping(gains)  * (dx_desired - dx)
+            
+            pos_error = np.clip(x_desired - x, -0.05, 0.05)
+            vel_error = dx_desired - dx
+            error = gains["kp"] * pos_error + self._calc_damping(gains)  * vel_error
             # considered limiting error term
             return error
             
@@ -152,8 +169,20 @@ class OSC(object):
                 gains = self.controller_gains["orientation"]
             except:
                 raise ValueError("Invalid controller gains")
-            error = gains["kp"] * self._orientation_error(x, x_desired) + self._calc_damping(gains) * (dx_desired - dx) 
+            
+            # negative sign for kp arises due to how orientation error is currently calculated
+            error = -gains["kp"] * self._orientation_error(x, x_desired) + self._calc_damping(gains) * (dx_desired - dx) 
             return error
+        
+        elif mode == "nullspace":
+            try:
+                gains = self.controller_gains["nullspace"]
+            except:
+                raise ValueError("Invalid controller gains")
+            
+            error = gains["kp"] * (x_desired - x) + self._calc_damping(gains) * (dx_desired - dx)
+            return error
+        
         else:
             raise ValueError("Invalid mode for pd control")
     
@@ -164,10 +193,10 @@ class OSC(object):
         self._compute_eef_mass_matrix()
 
         # get joint velocities
-        current_joint_velocity = physics.data.qvel[self.arm_joint_ids]
+        current_joint_velocity = self.physics.data.qvel[self.arm_joint_ids]
         
         # calculate position pd control
-        eef_current_position = physics.bind(self.eef_site).xpos.copy()
+        eef_current_position = self.physics.bind(self.eef_site).xpos.copy()
         eef_current_velocity = self._eef_jacobian[:3,:] @ current_joint_velocity
         position_pd = self.pd_control(
             x=eef_current_position,
@@ -179,7 +208,7 @@ class OSC(object):
         )
         
         # calculate orientation pd control
-        eef_quat = mat_to_quat(physics.bind(self.eef_site).xmat.reshape(3,3).copy())
+        eef_quat = mat_to_quat(self.physics.bind(self.eef_site).xmat.reshape(3,3).copy())
         eef_angular_vel = self._eef_jacobian[3:,:] @ current_joint_velocity
         orientation_pd = self.pd_control(
             x=eef_quat,
@@ -192,17 +221,37 @@ class OSC(object):
         
         pd_error = np.hstack([position_pd, orientation_pd])
         tau = self._eef_jacobian.T @ self._eef_mass_matrix @ pd_error 
-        tau += self.physics.data.qfrc_bias[self.arm_joint_ids]
         
+        # nullspace projection
+        nullspace_error = self.pd_control(
+                x=self.physics.data.qpos[self.arm_joint_ids],
+                x_desired=self.nullspace_config,
+                dx=self.physics.data.qvel[self.arm_joint_ids],
+                dx_desired=np.zeros(len(self.arm_joints)),
+                gains=self.controller_gains["nullspace"],
+                mode="nullspace"
+                )
+
+        null_jacobian = np.linalg.inv(self.arm_mass_matrix) @ self._eef_jacobian.T @ self._eef_mass_matrix
+        tau += (np.eye(len(self.arm_joints)) - self._eef_jacobian.T @ null_jacobian.T) @ nullspace_error
+       
+        # compensate for external forces
+        tau += self.physics.data.qfrc_bias[self.arm_joint_ids]
+
         # compute effective torque
         actuator_moment_inv = np.linalg.pinv(self.physics.data.actuator_moment)
         actuator_moment_inv = actuator_moment_inv[self.arm_joint_ids, :][:, self.arm_joint_ids]
         tau = tau @ actuator_moment_inv 
 
-        if self._gripper_status == "open":
+        # include gripper status in command
+        if self._gripper_status == "idle":
             tau = np.concatenate([tau, [0.0]])
-        else:
+        elif self._gripper_status == "closing":
             tau = np.concatenate([tau, [255.0]])
+        elif self._gripper_status == "opening":
+            tau = np.concatenate([tau, [-255.0]])
+        else:
+            raise ValueError("Invalid gripper status")
 
         return tau
 
@@ -210,24 +259,36 @@ class OSC(object):
         converged = False
         start_time = self.physics.data.time
         while (self.physics.data.time - start_time < duration) and (not converged):
+            # compute control command
             control_command = self.compute_control_output()
+            
+            # step the simulation
             self.physics.set_control(control_command)
             self.physics.step()
-            self.passive_view.sync()
+            if self.passive_view is not None:
+                self.passive_view.sync()
     
-            # TODO: move to separate function
-            # check if we have converged
-            eef_pos = physics.bind(self.eef_site).xpos.copy()
-            eef_quat = mat_to_quat(physics.bind(self.eef_site).xmat.reshape(3,3).copy())
-            eef_vel = self._eef_jacobian[:3,:] @ physics.data.qvel[self.arm_joint_ids]
-            eef_angular_vel = self._eef_jacobian[3:,:] @ physics.data.qvel[self.arm_joint_ids]
-            position_error = np.linalg.norm(eef_pos - self._eef_target_position)
-            orientation_error = tr.quat_dist(eef_quat, self._eef_target_quat)
-
-            # TODO: add velocity convergence
-            if (position_error < self.position_threshold) and (orientation_error < self.orientation_threshold):
+            # check for convergence
+            eef_pos = self.physics.bind(self.eef_site).xpos.copy()
+            eef_quat = mat_to_quat(self.physics.bind(self.eef_site).xmat.reshape(3,3).copy())
+            eef_vel = self._eef_jacobian[:3,:] @ self.physics.data.qvel[self.arm_joint_ids]
+            eef_angular_vel = self._eef_jacobian[3:,:] @ self.physics.data.qvel[self.arm_joint_ids]
+            
+            grasp_sensor = self.hand.grasp_sensor_callable(self.physics)
+            gripper_converged = True if self._gripper_status == "idle" or (self._gripper_status == "closing" and grasp_sensor==2) else False
+            
+            print(self.physics.named.data.qpos)
+            if gripper_converged:
+                self._gripper_status = "idle"
+            print(grasp_sensor)
+            print(gripper_converged)            
+            # TODO: add conditions for velocity convergence
+            if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold) and (gripper_converged):
                 converged = True
+                break
 
+        
+        return converged
 
 if __name__ == "__main__":
     
@@ -250,7 +311,7 @@ if __name__ == "__main__":
     physics, passive_view, arm, gripper = construct_physics(cfg)
 
     # run the controller
-    osc = OSC(physics, passive_view, arm, MOTOR_CONFIG["controllers"]["osc"])
+    osc = OSC(physics, arm, gripper, MOTOR_CONFIG["controllers"]["osc"], passive_view)
     
     # compute the eef targets
     target_eef_pose = np.array([0.45,0.0,0.6])
@@ -259,13 +320,40 @@ if __name__ == "__main__":
 
     # above target
     osc.eef_target_position = target_eef_pose
-    osc.eef_target_velocity = np.array([0.0, 0.0, 0.0])
+    osc.eef_target_velocity = np.zeros(3)
     osc.eef_target_quat = target_quat
-    osc.eef_target_angular_velocity = 0.0
-    osc.run_controller(1.0)
+    osc.eef_target_angular_velocity = np.zeros(3)
+    traj = LinearTrajectory(osc, target_eef_pose, target_quat, 4)
+    #traj.execute_trajectory(5.0)
+    osc.run_controller(3.0)
+
+    # pregrasp pose
+    osc.eef_target_position = target_eef_pose - np.array([0.0, 0.0, 0.425])
+    traj = LinearTrajectory(osc, target_eef_pose - np.array([0.0, 0.0, 0.4]), target_quat, 4)
+    #traj.execute_trajectory(3.0)
+    osc.run_controller(3.0)
+    
+    # close gripper
+    osc._gripper_status = "closing"
+    osc.run_controller(3.0)
+    
+    # pregrasp pose
+    osc.eef_target_position = target_eef_pose
+    osc.eef_target_velocity = np.zeros(3)
+    osc.eef_target_quat = target_quat
+    osc.eef_target_angular_velocity = np.zeros(3)
+    traj = LinearTrajectory(osc, target_eef_pose, target_quat, 4)
+    osc.run_controller(3.0)
 
     # pregrasp pose
     osc.eef_target_position = target_eef_pose - np.array([0.0, 0.0, 0.4])
-    osc.run_controller(1.0)
-
-
+    traj = LinearTrajectory(osc, target_eef_pose - np.array([0.0, 0.0, 0.4]), target_quat, 4)
+    osc.run_controller(4.0)
+    
+    # open gripper
+    osc._gripper_status = "opening"
+    osc.run_controller(3.0)
+    
+    # pregrasp pose
+    osc.eef_target_position = target_eef_pose
+    osc.run_controller(4.0)

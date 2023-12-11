@@ -44,6 +44,8 @@ ipywidgets = "^8.1.1"
 jupyterlab = "^4.0.9"
 simple-pid = "^2.0.0"
 cmaes = "^0.10.0"
+evojax = "^0.2.16"
+evosax = "^0.1.5"
 
 [tool.black]
 line-length = 120
