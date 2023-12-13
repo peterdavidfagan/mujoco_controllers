@@ -22,7 +22,7 @@ from dm_robotics.transformations import transformations as tr
 from mujoco_controllers.build_env import construct_physics
 from mujoco_controllers.trajectory import LinearTrajectory
 
-from rearrangement_benchmark.env_components.props import Rectangle
+from rearrangement_benchmark.environment.props import Rectangle
 from ikpy.chain import Chain
 from hydra import compose, initialize
 from hydra.utils import instantiate
@@ -277,11 +277,11 @@ class OSC(object):
             grasp_sensor = self.hand.grasp_sensor_callable(self.physics)
             gripper_converged = True if self._gripper_status == "idle" or (self._gripper_status == "closing" and grasp_sensor==2) else False
             
-            print(self.physics.named.data.qpos)
+            #print(self.physics.named.data.qpos)
             if gripper_converged:
                 self._gripper_status = "idle"
-            print(grasp_sensor)
-            print(gripper_converged)            
+            #print(grasp_sensor)
+            #print(gripper_converged)            
             # TODO: add conditions for velocity convergence
             if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold) and (gripper_converged):
                 converged = True
@@ -309,10 +309,12 @@ if __name__ == "__main__":
     kinematic_chain = Chain.from_urdf_file(IKPY_URDF_PATH, base_elements=["panda_link0"]) 
 
     physics, passive_view, arm, gripper = construct_physics(cfg)
-
+    
     # run the controller
     osc = OSC(physics, arm, gripper, MOTOR_CONFIG["controllers"]["osc"], passive_view)
     
+    #print("eef_pos: ", osc.physics.bind(osc.eef_site).xpos)
+    #print("eef_quat: ", mat_to_quat(osc.physics.bind(osc.eef_site).xmat.reshape(3,3)))    
     # compute the eef targets
     target_eef_pose = np.array([0.45,0.0,0.6])
     target_orientation = R.from_euler('xyz', [0, 180, 0], degrees=True).as_matrix()

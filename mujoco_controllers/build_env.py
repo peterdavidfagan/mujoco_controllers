@@ -13,7 +13,7 @@ from dm_robotics.moma import robot
 from dm_robotics.transformations.transformations import mat_to_quat, quat_to_mat, quat_to_euler
 from dm_robotics.transformations import transformations as tr
 
-from rearrangement_benchmark.env_components.props import Rectangle
+from rearrangement_benchmark.environment.props import Rectangle
 from hydra import compose, initialize
 from hydra.utils import instantiate
 
