@@ -35,6 +35,8 @@ class OSC(object):
         self.passive_view = passive_view
 
         # controller gains
+        self.controller_timestep = controller_config["timestep"]
+        self.control_steps = int(self.controller_timestep // self.physics.model.opt.timestep)
         self.controller_gains = controller_config["gains"]
         self.nullspace_config = np.array(controller_config["nullspace"]["joint_config"])
         self.position_threshold = controller_config["convergence"]["position_threshold"]
@@ -261,10 +263,10 @@ class OSC(object):
         elif self._gripper_status == "closing":
             tau = np.concatenate([tau, [255.0]])
         elif self._gripper_status == "opening":
-            tau = np.concatenate([tau, [-255.0]])
+            tau = np.concatenate([tau, [0.0]])
         else:
             raise ValueError("Invalid gripper status")
-
+        
         return tau
 
     def run_controller(self, duration):
@@ -275,10 +277,11 @@ class OSC(object):
             control_command = self.compute_control_output()
             
             # step the simulation
-            self.physics.set_control(control_command)
-            self.physics.step()
-            if self.passive_view is not None:
-                self.passive_view.sync()
+            for _ in range(self.control_steps):
+                self.physics.set_control(control_command)
+                self.physics.step()
+                if self.passive_view is not None:
+                    self.passive_view.sync()
     
             # check for convergence
             eef_pos = self.physics.bind(self.eef_site).xpos.copy()
@@ -286,20 +289,22 @@ class OSC(object):
             eef_vel = self._eef_jacobian[:3,:] @ self.physics.data.qvel[self.arm_joint_ids]
             eef_angular_vel = self._eef_jacobian[3:,:] @ self.physics.data.qvel[self.arm_joint_ids]
             
-            grasp_sensor = self.hand.grasp_sensor_callable(self.physics)
-            gripper_open = np.allclose(self.physics.bind(self.hand_joints).qpos, 0.0, atol=1e-3)
-            gripper_converged = True if self._gripper_status == "idle" or \
-                    (self._gripper_status == "closing" and grasp_sensor==2) or \
-                    (self._gripper_status == "opening" and gripper_open) else False
+            #grasp_sensor = self.hand.grasp_sensor_callable(self.physics)
+            #gripper_open = np.allclose(self.physics.bind(self.hand_joints).qpos, 0.0, atol=1e-3)
+            #gripper_converged = True if self._gripper_status == "idle" or \
+            #        (self._gripper_status == "closing" and grasp_sensor==2) or \
+            #        (self._gripper_status == "opening" and gripper_open) else False
 
-            if gripper_converged:
-                self._gripper_status = "idle"
+            #if gripper_converged:
+            #    self._gripper_status = "idle"
 
             # TODO: add conditions for velocity convergence
-            if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold) and (gripper_converged):
+            if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold) and (self._gripper_status=="idle"):
                 converged = True
                 break
-
+        
+        if self._gripper_status != "idle":
+            converged = True
         
         return converged
 
