@@ -349,4 +349,11 @@ if __name__ == "__main__":
     osc.eef_target_position = object_pos + np.array([0, 0, pick_height])
     osc.run_controller(2.0)
 
+    # close gripper
+    osc._gripper_status = "closing"
+    osc.run_controller(1.0)
+
+    # lift
+    osc.eef_target_position = object_pos + np.array([0, 0, pre_pick_height])
+    osc.run_controller(2.0)
 
