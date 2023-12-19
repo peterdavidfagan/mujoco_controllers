@@ -312,68 +312,41 @@ if __name__ == "__main__":
     
     # save default configs 
     ready_config = np.array([0, -0.785, 0, -2.356, 0, 1.571, 0.785])
-    grasp_pose_config = np.array([-3.95380744e-04,  2.37985323e-01,  3.52180384e-04, -2.55912981e+00,
-     -2.42755642e-04,  2.79711454e+00,  7.85573570e-01])
 
     # load different robot configurations
     initialize(version_base=None, config_path="./config", job_name="default_config")
     POSITION_CONFIG = compose(config_name="controller_tuning", overrides=["robots=default"])
     VELOCITY_CONFIG = compose(config_name="controller_tuning", overrides=["robots=velocity"])
     MOTOR_CONFIG = compose(config_name="controller_tuning", overrides=["robots=motor"])
-    IKPY_URDF_PATH = "./models/arms/robot.urdf"
 
     # For now assign default cfg
     cfg = MOTOR_CONFIG
-    kinematic_chain = Chain.from_urdf_file(IKPY_URDF_PATH, base_elements=["panda_link0"]) 
-
     physics, passive_view, arm, gripper = construct_physics(cfg)
-    
-    # run the controller
     osc = OSC(physics, arm, gripper, MOTOR_CONFIG["controllers"]["osc"], passive_view)
-    
-    #print("eef_pos: ", osc.physics.bind(osc.eef_site).xpos)
-    #print("eef_quat: ", mat_to_quat(osc.physics.bind(osc.eef_site).xmat.reshape(3,3)))    
-    # compute the eef targets
-    target_eef_pose = np.array([0.45,0.0,0.6])
-    target_orientation = R.from_euler('xyz', [0, 180, 0], degrees=True).as_matrix()
-    target_quat = mat_to_quat(target_orientation)
+   
 
-    # above target
-    osc.eef_target_position = target_eef_pose
+    # get object pose
+    cube_id = mujoco.mj_name2id(physics.model.ptr, mujoco.mjtObj.mjOBJ_GEOM, "cube/cube")
+    object_pos = physics.data.geom_xpos[cube_id]
+    object_orientation = physics.data.geom_xmat[cube_id].reshape(3,3)
+
+    print("Object position: ", object_pos)
+    print("Object orientation: ", object_orientation)
+    
+    pre_pick_height = 0.6
+    pick_height = 0.15
+    default_quat =  mat_to_quat(R.from_euler('xyz', [0, 180, 0], degrees=True).as_matrix())
+
+
+    # prepick
+    osc.eef_target_position = object_pos + np.array([0, 0, pre_pick_height])
+    osc.eef_target_quat = default_quat
     osc.eef_target_velocity = np.zeros(3)
-    osc.eef_target_quat = target_quat
     osc.eef_target_angular_velocity = np.zeros(3)
-    traj = LinearTrajectory(osc, target_eef_pose, target_quat, 4)
-    #traj.execute_trajectory(5.0)
-    osc.run_controller(3.0)
+    osc.run_controller(2.0)
 
-    # pregrasp pose
-    osc.eef_target_position = target_eef_pose - np.array([0.0, 0.0, 0.425])
-    traj = LinearTrajectory(osc, target_eef_pose - np.array([0.0, 0.0, 0.4]), target_quat, 4)
-    #traj.execute_trajectory(3.0)
-    osc.run_controller(3.0)
-    
-    # close gripper
-    osc._gripper_status = "closing"
-    osc.run_controller(3.0)
-    
-    # pregrasp pose
-    osc.eef_target_position = target_eef_pose
-    osc.eef_target_velocity = np.zeros(3)
-    osc.eef_target_quat = target_quat
-    osc.eef_target_angular_velocity = np.zeros(3)
-    traj = LinearTrajectory(osc, target_eef_pose, target_quat, 4)
-    osc.run_controller(3.0)
+    # pick
+    osc.eef_target_position = object_pos + np.array([0, 0, pick_height])
+    osc.run_controller(2.0)
 
-    # pregrasp pose
-    osc.eef_target_position = target_eef_pose - np.array([0.0, 0.0, 0.4])
-    traj = LinearTrajectory(osc, target_eef_pose - np.array([0.0, 0.0, 0.4]), target_quat, 4)
-    osc.run_controller(4.0)
-    
-    # open gripper
-    osc._gripper_status = "opening"
-    osc.run_controller(3.0)
-    
-    # pregrasp pose
-    osc.eef_target_position = target_eef_pose
-    osc.run_controller(4.0)
+

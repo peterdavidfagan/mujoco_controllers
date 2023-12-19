@@ -20,7 +20,7 @@ from hydra.utils import instantiate
 def build_arena(name: str) -> composer.Arena:
     """Build a MuJoCo arena."""
     arena = empty.Arena(name=name)
-    arena.mjcf_model.option.timestep = 0.001
+    arena.mjcf_model.option.timestep = 0.0005
     arena.mjcf_model.option.gravity = (0.0, 0.0, -9.8)
     arena.mjcf_model.option.noslip_iterations = 3
     arena.mjcf_model.size.nconmax = 1000

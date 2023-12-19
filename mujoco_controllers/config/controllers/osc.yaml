@@ -1,12 +1,13 @@
 osc:
+  timestep: 0.005
   gains:
     position:
       damping_ratio: 1.0
       kp: 200.0
       kd: 0 # calculate from damping ratio
     orientation:
-      damping_ratio: 0.1
-      kp: 1000.0
+      damping_ratio: 1.0
+      kp: 200.0
       kd: 0 # calculate from damping ratio
     nullspace:
       damping_ratio: 1.0
@@ -17,5 +18,5 @@ osc:
     joint_config: [0, -0.785, 0, -2.356, 0, 1.571, 0.785]
 
   convergence:
-    position_threshold: 1e-3
-    orientation_threshold: 1e-3
+    position_threshold: 5e-3
+    orientation_threshold: 1e-2
