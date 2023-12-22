@@ -20,7 +20,6 @@ from dm_robotics.transformations.transformations import mat_to_quat, quat_to_mat
 from dm_robotics.transformations import transformations as tr
 
 from mujoco_controllers.build_env import construct_physics
-from mujoco_controllers.trajectory import LinearTrajectory
 
 from rearrangement_benchmark.environment.props import Rectangle
 from ikpy.chain import Chain
@@ -29,13 +28,12 @@ from hydra.utils import instantiate
 
 class OSC(object):
 
-    def __init__(self, physics, arm, hand, controller_config, passive_view=None):
+    def __init__(self, physics, arm, controller_config):
         # core simulation instance
         self.physics = physics
-        self.passive_view = passive_view
 
         # controller gains
-        self.controller_timestep = controller_config["timestep"]
+        self.controller_timestep = controller_config["control_dt"]
         self.control_steps = int(self.controller_timestep // self.physics.model.opt.timestep)
         self.controller_gains = controller_config["gains"]
         self.nullspace_config = np.array(controller_config["nullspace"]["joint_config"])
@@ -47,18 +45,12 @@ class OSC(object):
         self.eef_site = arm.attachment_site
         self.arm_joints = arm.joints
         self.arm_joint_ids = np.array(physics.bind(self.arm_joints).dofadr)
-        
-        # get joint details from hand
-        self.hand = hand
-        self.hand_joints = hand.joints
-        self.hand_joint_ids = np.array(physics.bind(self.hand_joints).dofadr)
 
         # control targets
         self._eef_target_position = None
         self._eef_target_velocity = None
         self._eef_target_quat = None
         self._eef_target_angular_velocity = None
-        self._gripper_status = "idle" # idle, opening, closing
         
         # control equation variables
         self._eef_mass_matrix = None
@@ -266,47 +258,23 @@ class OSC(object):
         actuator_moment_inv = actuator_moment_inv[self.arm_joint_ids, :][:, self.arm_joint_ids]
         tau = tau @ actuator_moment_inv 
 
-        # include gripper status in command
-        if self._gripper_status == "idle":
-            tau = np.concatenate([tau, [0.0]])
-        elif self._gripper_status == "closing":
-            tau = np.concatenate([tau, [255.0]])
-        elif self._gripper_status == "opening":
-            tau = np.concatenate([tau, [0.0]])
-        else:
-            raise ValueError("Invalid gripper status")
-        
         return tau
 
-    def run_controller(self, duration, gripper_cmd=False):
-        converged = False
-        start_time = self.physics.data.time
-        while (self.physics.data.time - start_time < duration) and (not converged):
-            # compute control command
-            control_command = self.compute_control_output()
-            
-            # step the simulation
-            for _ in range(self.control_steps):
-                self.physics.set_control(control_command)
-                self.physics.step()
-                if self.passive_view is not None:
-                    self.passive_view.sync()
-    
-            # check for convergence
-            eef_pos = self.physics.bind(self.eef_site).xpos.copy()
-            eef_quat = mat_to_quat(self.physics.bind(self.eef_site).xmat.reshape(3,3).copy())
-            eef_vel = self._eef_jacobian[:3,:] @ self.physics.data.qvel[self.arm_joint_ids]
-            eef_angular_vel = self._eef_jacobian[3:,:] @ self.physics.data.qvel[self.arm_joint_ids]
-            
-            # TODO: add conditions for velocity convergence
-            if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold) and (not gripper_cmd):
-                converged = True
-                break
-        
-        if gripper_cmd:
-            converged = True
+    def is_converged(self):
+        """ Check if the robot arm is converged to the target. """
+        arm_converged = False
 
-        return converged
+        # check for arm controller convergence
+        eef_pos = self.physics.bind(self.eef_site).xpos.copy()
+        eef_quat = mat_to_quat(self.physics.bind(self.eef_site).xmat.reshape(3,3).copy())
+        eef_vel = self._eef_jacobian[:3,:] @ self.physics.data.qvel[self.arm_joint_ids]
+        eef_angular_vel = self._eef_jacobian[3:,:] @ self.physics.data.qvel[self.arm_joint_ids]
+        
+        if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold):
+            arm_converged = True
+
+        return arm_converged
+
 
 if __name__ == "__main__":
     
