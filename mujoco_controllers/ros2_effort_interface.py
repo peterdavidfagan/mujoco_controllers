@@ -1,1 +1,1 @@
-""" Exposing a MuJoCo position acutator as ROS 2 topic. """
+""" Exposing a MuJoCo motor acutator as ROS 2 topic. """

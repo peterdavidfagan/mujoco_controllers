@@ -174,7 +174,10 @@ class OSC(object):
             
             pos_error = np.clip(x_desired - x, -0.05, 0.05)
             vel_error = dx_desired - dx
-            error = gains["kp"] * pos_error + self._calc_damping(gains)  * vel_error
+            if gains["kd"] is None:
+                error = gains["kp"] * pos_error + self._calc_damping(gains)  * vel_error
+            else:
+                error = gains["kp"] * pos_error + gains["kd"] * vel_error
             # considered limiting error term
             return error
             
@@ -185,7 +188,10 @@ class OSC(object):
                 raise ValueError("Invalid controller gains")
             
             # negative sign for kp arises due to how orientation error is currently calculated
-            error = -gains["kp"] * self._orientation_error(x, x_desired) + self._calc_damping(gains) * (dx_desired - dx) 
+            if gains["kd"] is None:
+                error = -gains["kp"] * self._orientation_error(x, x_desired) + self._calc_damping(gains) * (dx_desired - dx)
+            else:
+                error = -gains["kp"] * self._orientation_error(x, x_desired) + gains["kd"] * (dx_desired - dx)
             return error
         
         elif mode == "nullspace":
@@ -194,7 +200,10 @@ class OSC(object):
             except:
                 raise ValueError("Invalid controller gains")
             
-            error = gains["kp"] * (x_desired - x) + self._calc_damping(gains) * (dx_desired - dx)
+            if gains["kd"] is None:
+                error = gains["kp"] * (x_desired - x) + self._calc_damping(gains) * (dx_desired - dx)
+            else:
+                error = gains["kp"] * (x_desired - x) + gains["kd"] * (dx_desired - dx)
             return error
         
         else:
@@ -269,7 +278,7 @@ class OSC(object):
         
         return tau
 
-    def run_controller(self, duration):
+    def run_controller(self, duration, gripper_cmd=False):
         converged = False
         start_time = self.physics.data.time
         while (self.physics.data.time - start_time < duration) and (not converged):
@@ -289,23 +298,14 @@ class OSC(object):
             eef_vel = self._eef_jacobian[:3,:] @ self.physics.data.qvel[self.arm_joint_ids]
             eef_angular_vel = self._eef_jacobian[3:,:] @ self.physics.data.qvel[self.arm_joint_ids]
             
-            #grasp_sensor = self.hand.grasp_sensor_callable(self.physics)
-            #gripper_open = np.allclose(self.physics.bind(self.hand_joints).qpos, 0.0, atol=1e-3)
-            #gripper_converged = True if self._gripper_status == "idle" or \
-            #        (self._gripper_status == "closing" and grasp_sensor==2) or \
-            #        (self._gripper_status == "opening" and gripper_open) else False
-
-            #if gripper_converged:
-            #    self._gripper_status = "idle"
-
             # TODO: add conditions for velocity convergence
-            if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold) and (self._gripper_status=="idle"):
+            if (self.current_position_error() < self.position_threshold) and (self.current_orientation_error() < self.orientation_threshold) and (not gripper_cmd):
                 converged = True
                 break
         
-        if self._gripper_status != "idle":
+        if gripper_cmd:
             converged = True
-        
+
         return converged
 
 if __name__ == "__main__":
