@@ -46,6 +46,7 @@ simple-pid = "^2.0.0"
 cmaes = "^0.10.0"
 evojax = "^0.2.16"
 evosax = "^0.1.5"
+casadi = "^3.6.4"
 
 [tool.black]
 line-length = 120
