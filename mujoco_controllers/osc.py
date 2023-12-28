@@ -137,6 +137,12 @@ class OSC(object):
         quat: np.ndarray,
         quat_des: np.ndarray,
     ) -> np.ndarray:
+        """
+        Calculates the orientation error between two quaternions.
+
+        Implemented base on: Resolved-acceleration control of robot manipulators: A critical review with experiments.
+        Assumed that the quaternions are unit quaternions.
+        """
         quat_conj = np.zeros(4,)
         mujoco.mju_negQuat(quat_conj, quat)
         quat_conj /= np.linalg.norm(quat_conj)
@@ -145,13 +151,6 @@ class OSC(object):
         mujoco.mju_mulQuat(quat_err, quat_des, quat_conj)
         
         return quat_err[1:] * np.sign(quat_err[0])
-    
-        #axis_angle = tr.quat_to_axisangle(quat_err)
-        #if quat_err[0] < 0.0:
-        #    angle = np.linalg.norm(axis_angle) - 2 * np.pi
-        #else:
-        #    angle = np.linalg.norm(axis_angle)
-        #return axis_angle * angle
 
     # TODO: move to properties
     def current_orientation_error(self):
@@ -175,7 +174,7 @@ class OSC(object):
             vel_error = dx_desired - dx
             return gains["kp"] * pos_error + gains["kd"] * vel_error
         elif mode == "orientation": 
-            return -gains["kp"] * self._orientation_error(x, x_desired) + gains["kd"] * (dx_desired - dx) # note: negative sign due to orientation error calculation
+            return gains["kp"] * self._orientation_error(x, x_desired) + gains["kd"] * (dx_desired - dx)
         elif mode == "nullspace":
             return gains["kp"] * (x_desired - x) + gains["kd"] * (dx_desired - dx)
         else:
