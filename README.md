@@ -1,3 +1,4 @@
+[![pre-commit](https://github.com/peterdavidfagan/mujoco_controllers/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/peterdavidfagan/mujoco_controllers/blob/main/.github/workflows/pre-commit.yaml)
 [![container](https://github.com/peterdavidfagan/mujoco_controllers/actions/workflows/mujoco_controllers.yaml/badge.svg)](https://github.com/peterdavidfagan/mujoco_controllers/blob/main/.github/workflows/mujoco_controllers.yaml)
 
 # mujoco-controllers
