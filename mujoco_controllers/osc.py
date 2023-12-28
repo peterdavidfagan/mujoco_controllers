@@ -73,6 +73,9 @@ class OSC(object):
         quat = np.zeros(4,)
         rot_mat = self.physics.bind(self.eef_site).xmat.copy()
         mujoco.mju_mat2Quat(quat, rot_mat)
+        # TODO: check if this is necessary the quaternion may already be normalized from mujoco
+        # ensure unit quaternion
+        quat /= np.linalg.norm(quat)
         return quat
 
     @property
@@ -92,7 +95,7 @@ class OSC(object):
         self.eef_target = EEFTarget(
             position=position if position is not None else self.eef_target.position,
             velocity=velocity if velocity is not None else self.eef_target.velocity,
-            quat=quat if quat is not None else self.eef_target.quat,
+            quat=quat/np.linalg.norm(quat) if quat is not None else self.eef_target.quat,
             angular_velocity=angular_velocity if angular_velocity is not None else self.eef_target.angular_velocity,
         )
 
@@ -134,22 +137,23 @@ class OSC(object):
         quat: np.ndarray,
         quat_des: np.ndarray,
     ) -> np.ndarray:
-        
         quat_conj = np.zeros(4,)
-        mujoco.mju_negQuat(quat_conj, quat_des)
+        mujoco.mju_negQuat(quat_conj, quat)
         quat_conj /= np.linalg.norm(quat_conj)
 
         quat_err = np.zeros(4,)
-        mujoco.mju_mulQuat(quat_err, quat, quat_conj)
+        mujoco.mju_mulQuat(quat_err, quat_des, quat_conj)
         
-        axis_angle = tr.quat_to_axisangle(quat_err)
-        if quat_err[0] < 0.0:
-            angle = np.linalg.norm(axis_angle) - 2 * np.pi
-        else:
-            angle = np.linalg.norm(axis_angle)
-        print(axis_angle * angle)
-        return axis_angle * angle
+        return quat_err[1:] * np.sign(quat_err[0])
+    
+        #axis_angle = tr.quat_to_axisangle(quat_err)
+        #if quat_err[0] < 0.0:
+        #    angle = np.linalg.norm(axis_angle) - 2 * np.pi
+        #else:
+        #    angle = np.linalg.norm(axis_angle)
+        #return axis_angle * angle
 
+    # TODO: move to properties
     def current_orientation_error(self):
         return np.max(abs(self._orientation_error(self.current_eef_quat, self.eef_target.quat)))
 
@@ -167,7 +171,7 @@ class OSC(object):
         mode="position"):
     
         if mode == "position":
-            pos_error = np.clip(x_desired - x, -0.05, 0.05)
+            pos_error = np.clip(x_desired - x, -0.05, 0.05) # clip to prevent large errors (this is suboptimal)
             vel_error = dx_desired - dx
             return gains["kp"] * pos_error + gains["kd"] * vel_error
         elif mode == "orientation": 
