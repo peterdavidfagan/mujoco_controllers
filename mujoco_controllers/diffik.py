@@ -68,7 +68,7 @@ class DiffIK(MujocoController):
         )
     
     def compute_control_output(self):
-        """Solve quadratic program to compute joint torques."""
+        """Solve quadratic program to compute joint velocities."""
         
         # define quadratic program Q, c
         self._compute_eef_jacobian()
