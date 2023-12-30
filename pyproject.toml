@@ -47,6 +47,7 @@ cmaes = "^0.10.0"
 evojax = "^0.2.16"
 evosax = "^0.1.5"
 casadi = "^3.6.4"
+jaxopt = "^0.8.2"
 
 [tool.black]
 line-length = 120

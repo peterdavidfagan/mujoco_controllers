@@ -6,6 +6,7 @@ Heavily inspired by Kevin Zakka's implementation: https://github.com/kevinzakka/
 
 from typing import Tuple, Dict, Optional, Union, List
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -19,7 +20,6 @@ from dm_robotics.transformations import transformations as tr
 
 from mujoco_controllers.build_env import construct_physics
 
-from rearrangement_benchmark.environment.props import Rectangle
 from ikpy.chain import Chain
 from hydra import compose, initialize
 from hydra.utils import instantiate
@@ -62,7 +62,6 @@ class OSC(object):
             quat=None,
             angular_velocity=None,
         )
-        
     
     @property
     def current_eef_position(self):
@@ -243,26 +242,60 @@ class OSC(object):
 
 if __name__ == "__main__":
         
-    raise NotImplementedError("Not implemented yet")
-
-    # save default configs 
+    # save default configs (TODO: move to keyframe)
     ready_config = np.array([0, -0.785, 0, -2.356, 0, 1.571, 0.785])
 
     # load different robot configurations
     initialize(version_base=None, config_path="./config", job_name="default_config")
-    POSITION_CONFIG = compose(config_name="controller_tuning", overrides=["robots=default"])
-    VELOCITY_CONFIG = compose(config_name="controller_tuning", overrides=["robots=velocity"])
-    MOTOR_CONFIG = compose(config_name="controller_tuning", overrides=["robots=motor"])
-
-    # For now assign default cfg
-    cfg = MOTOR_CONFIG
-
-    # get object pose
-    cube_id = mujoco.mj_name2id(physics.model.ptr, mujoco.mjtObj.mjOBJ_GEOM, "cube/cube")
-    object_pos = physics.data.geom_xpos[cube_id]
-    object_orientation = physics.data.geom_xmat[cube_id].reshape(3,3)
+    cfg = compose(config_name="itl_rearrangement")
     
-    pre_pick_height = 0.6
-    pick_height = 0.15
-    default_quat = (R.from_euler('xyz', [0, 180, 0], degrees=True).as_matrix()).as_quat()
+    # ensure mjcf paths are relative to this file
+    file_path = Path(__file__).parent.absolute()
+    cfg.robots.arm.arm.mjcf_path = str(file_path / cfg.robots.arm.arm.mjcf_path)
+    cfg.robots.end_effector.end_effector.mjcf_path = str(file_path / cfg.robots.end_effector.end_effector.mjcf_path)
+
+    # instantiate physics and controller
+    physics, passive_view, arm, gripper = construct_physics(cfg)
+    osc = arm.controller_config.controller(physics, arm) # super unclean fix this
+    control_steps = int(arm.controller_config.controller_params.control_dt // physics.model.opt.timestep)
+
+    # run controller to random targets
+    for _ in range(10):
+        # randomly samply target pose from workspace
+        position_x = np.random.uniform(0.25, 0.5)
+        position_y = np.random.uniform(-0.3, 0.3)
+        position_z = np.random.uniform(0.6, 0.7)
+        position = np.array([position_x, position_y, position_z])
+        
+        # fix gripper orientation
+        quat = np.zeros(4,)
+        mat = obj_rot = R.from_euler('xyz', [0, 180, 0], degrees=True).as_matrix().flatten()
+        mujoco.mju_mat2Quat(quat, mat)
+
+        osc.set_target(
+            position=position,
+            velocity=np.zeros(3),
+            quat=quat,
+            angular_velocity=np.zeros(3)
+        )
+
+        duration = 5
+        converged = False
+        start_time = physics.data.time
+        while (physics.data.time - start_time < duration) and (not converged):
+            # compute control command
+            arm_command = osc.compute_control_output()
+            gripper_command = np.array([0.0])
+            control_command = np.hstack([arm_command, gripper_command])
+
+            # step the simulation
+            for _ in range(control_steps):
+                physics.set_control(control_command)
+                physics.step()
+                if passive_view is not None:
+                    passive_view.sync()
+
+                if osc.is_converged():
+                    converged = True
+                    break
 

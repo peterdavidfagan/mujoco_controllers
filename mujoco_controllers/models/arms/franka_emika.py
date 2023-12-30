@@ -9,24 +9,28 @@ from dm_robotics.moma.models.robots.robot_arms import robot_arm
 class FER(robot_arm.RobotArm):
     """Franka Emika Panda Robot Arm."""
 
-    def __init__(self, relative_robot_mjcf_path: str, actuator_config: dict, sensor_config: dict=None):
+    def __init__(self, mjcf_path: str, actuator_config: dict, sensor_config: dict=None, controller_config: dict=None, configuration_config: dict=None):
         """Initialize the robot arm."""
-        self.relative_robot_mjcf_path = relative_robot_mjcf_path
+        self.mjcf_path = mjcf_path
         self.actuator_config = actuator_config
         self.sensor_config = sensor_config
+        self.controller_config = controller_config
+        self._named_configurations = configuration_config
+        self.controller = None
         super().__init__()
 
     def _build(self):
-        self._fer_root = mjcf.from_path(self.relative_robot_mjcf_path)
+        self._fer_root = mjcf.from_path(self.mjcf_path)
         self._joints = self._fer_root.find_all("joint")
-        # TODO: add assert that checks for joint actuator assignment
+        # add sensors and actuators
         self._add_actuators()
         self._add_sensors()
         self._actuators = self._fer_root.find_all("actuator")
-        #self._wrist_site = self._fer_root.find("site", "wrist_site")
+        # define attachment and wrist sites
         self._attachment_site = self._fer_root.find("site", "attachment_site")
         self._wrist_site = self._attachment_site
 
+    # TODO: Refactor this
     def _add_actuators(self):
         """Override the actuator model by config."""
         if self.actuator_config["type"] == "motor":
@@ -62,6 +66,7 @@ class FER(robot_arm.RobotArm):
         else:
             raise ValueError("Unsupported actuator model: {}".format(self.actuator_model))
 
+    # TODO: Refactor this
     def _add_sensors(self):
         """Override the sensor model by config."""
         if self.sensor_config["type"] == "jointpos":
@@ -102,6 +107,11 @@ class FER(robot_arm.RobotArm):
     def attachment_site(self):
         """Returns the attachment site."""
         return self._attachment_site
+    
+    @property
+    def named_configurations(self):
+        """Returns the named configurations for the robot."""
+        return self._named_configurations
 
     def set_joint_angles(self, physics: mjcf.Physics, qpos: np.ndarray) -> None:
         """Set the joint angles of the robot."""
