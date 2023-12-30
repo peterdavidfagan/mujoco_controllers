@@ -67,7 +67,6 @@ class DiffIK(MujocoController):
             angular_velocity=angular_velocity if angular_velocity is not None else self.eef_target.angular_velocity,
         )
     
-
     def compute_control_output(self):
         """Solve quadratic program to compute joint torques."""
         
@@ -101,10 +100,73 @@ class DiffIK(MujocoController):
             params_ineq=(G,h),
             ).params
         
-        print(sol.x)
+        # TODO: understand solver outputs 
+        # wish to fetch joint velocity values
 
-        return sol
+        #return sol
         
 
     def is_converged(self):
         pass
+
+
+if __name__ == "__main__":
+
+    raise NotImplementedError
+    
+    # save default configs (TODO: move to keyframe)
+    ready_config = np.array([0, -0.785, 0, -2.356, 0, 1.571, 0.785])
+
+    # load different robot configurations
+    initialize(version_base=None, config_path="./config", job_name="default_config")
+    cfg = compose(config_name="itl_rearrangement")
+    
+    # ensure mjcf paths are relative to this file
+    file_path = Path(__file__).parent.absolute()
+    cfg.robots.arm.arm.mjcf_path = str(file_path / cfg.robots.arm.arm.mjcf_path)
+    cfg.robots.end_effector.end_effector.mjcf_path = str(file_path / cfg.robots.end_effector.end_effector.mjcf_path)
+
+    # instantiate physics and controller
+    physics, passive_view, arm, gripper = construct_physics(cfg)
+    osc = arm.controller_config.controller(physics, arm) # super unclean fix this
+    control_steps = int(arm.controller_config.controller_params.control_dt // physics.model.opt.timestep)
+
+    # run controller to random targets
+    for _ in range(10):
+        # randomly samply target pose from workspace
+        position_x = np.random.uniform(0.25, 0.5)
+        position_y = np.random.uniform(-0.3, 0.3)
+        position_z = np.random.uniform(0.6, 0.7)
+        position = np.array([position_x, position_y, position_z])
+        
+        # fix gripper orientation
+        quat = np.zeros(4,)
+        mat = obj_rot = R.from_euler('xyz', [0, 180, 0], degrees=True).as_matrix().flatten()
+        mujoco.mju_mat2Quat(quat, mat)
+
+        osc.set_target(
+            position=position,
+            velocity=np.zeros(3),
+            quat=quat,
+            angular_velocity=np.zeros(3)
+        )
+
+        duration = 5
+        converged = False
+        start_time = physics.data.time
+        while (physics.data.time - start_time < duration) and (not converged):
+            # compute control command
+            arm_command = osc.compute_control_output()
+            gripper_command = np.array([0.0])
+            control_command = np.hstack([arm_command, gripper_command])
+
+            # step the simulation
+            for _ in range(control_steps):
+                physics.set_control(control_command)
+                physics.step()
+                if passive_view is not None:
+                    passive_view.sync()
+
+                if osc.is_converged():
+                    converged = True
+                    break
