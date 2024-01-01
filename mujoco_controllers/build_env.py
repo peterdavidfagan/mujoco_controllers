@@ -269,7 +269,7 @@ def construct_physics(cfg):
     physics = mjcf.Physics.from_mjcf_model(arena.mjcf_model)
 
     # set the default arm joint positions to ready
-    #physics.data.qpos[:7] = np.array(cfg.robots.arm_configs.ready)
+    physics.data.qpos[:7] = np.array(cfg.robots.arm.default_configurations.home)
     rectangle.set_pose(physics, position=np.array([0.45,0.0,0.02]), quaternion=np.array([0.0, 0.0, 0.0, 1.0]))
 
     # launch passive viewer
