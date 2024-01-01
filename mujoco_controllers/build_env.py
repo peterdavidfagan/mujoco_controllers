@@ -8,11 +8,8 @@ import mujoco
 from mujoco import viewer
 
 from dm_control import composer, mjcf
-from dm_robotics.moma.models.arenas import empty
-from dm_robotics.moma import robot
-from dm_robotics.transformations.transformations import mat_to_quat, quat_to_mat, quat_to_euler
-from dm_robotics.transformations import transformations as tr
 
+from mujoco_controllers.models.arenas import empty
 from mujoco_controllers.models.robot_arm import standard_compose
 
 from hydra import compose, initialize

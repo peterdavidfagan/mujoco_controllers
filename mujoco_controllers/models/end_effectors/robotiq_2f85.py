@@ -3,13 +3,10 @@
 from typing import List, Tuple, Optional
 
 from dm_control import mjcf
-from dm_robotics.moma.models import types
-from dm_robotics.moma.models import utils as models_utils
-from dm_robotics.moma.models.end_effectors.robot_hands import robot_hand
-from dm_robotics.moma.models.end_effectors.robot_hands import robotiq_2f85_constants as consts
+from mujoco_controllers.models.end_effectors.robot_hand import RobotHand
 import numpy as np
 
-class Robotiq2F85(robot_hand.RobotHand):
+class Robotiq2F85(RobotHand):
   """Robotiq 2-finger 85 adaptive gripper."""
 
   def __init__(self,
@@ -47,12 +44,12 @@ class Robotiq2F85(robot_hand.RobotHand):
     # consider adding tcp site
 
   @property
-  def joints(self) -> List[types.MjcfElement]:
+  def joints(self):
     """List of joint elements belonging to the hand."""
     return self._joints
 
   @property
-  def actuators(self) -> List[types.MjcfElement]:
+  def actuators(self):
     """List of actuator elements belonging to the hand."""
     return self._actuators
 
@@ -67,7 +64,7 @@ class Robotiq2F85(robot_hand.RobotHand):
     return "robotiq_2f85"
 
   @property
-  def tool_center_point(self) -> types.MjcfElement:
+  def tool_center_point(self):
     """Tool center point site of the hand."""
     return self._tool_center_point
 

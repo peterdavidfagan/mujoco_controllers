@@ -8,15 +8,6 @@ from dm_control import composer
 from dm_control import mjcf
 from dm_control.composer.initializers import utils
 from dm_control.mjcf import traversal_utils
-from dm_robotics.geometry import geometry
-from dm_robotics.moma import effector
-from dm_robotics.moma import prop
-from dm_robotics.moma import sensor as moma_sensor
-from dm_robotics.moma.models.end_effectors.robot_hands import robot_hand
-from dm_robotics.moma.models.robots.robot_arms import robot_arm
-from dm_robotics.moma.utils import ik_solver
-from dm_robotics.transformations.transformations import mat_to_quat, quat_to_mat, quat_to_euler
-from dm_robotics.transformations import transformations as tr
 import numpy as np
 
 import hydra
@@ -29,8 +20,8 @@ class RobotArm(abc.ABC):
    
   def __init__(
         self,
-        arm: robot_arm.RobotArm,
-        gripper: robot_hand.RobotHand,
+        arm,
+        gripper,
         physics: mjcf.Physics,
         passive_viewer: Optional = None,
         ):

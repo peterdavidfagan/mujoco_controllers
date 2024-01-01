@@ -3,10 +3,10 @@
 import numpy as np
 
 from dm_control import mjcf
-from dm_robotics.moma.models.robots.robot_arms import robot_arm
+from mujoco_controllers.models.arms.robot_arm import RobotArm
 
 
-class FER(robot_arm.RobotArm):
+class FER(RobotArm):
     """Franka Emika Panda Robot Arm."""
 
     def __init__(self, mjcf_path: str, actuator_config: dict, sensor_config: dict=None, controller_config: dict=None, configuration_config: dict=None):
