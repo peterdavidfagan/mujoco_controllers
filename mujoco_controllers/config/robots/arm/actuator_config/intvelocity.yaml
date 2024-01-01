@@ -1,36 +1,52 @@
-type: "velocity"
+type: "intvelocity"
 default:
   ctrlrange: "-2.175 2.175"
   forcerange: "-87 87"
+  actrange: "-2.8973 2.8973"
+  kp: 0.0
   kv: 0.0
 joint1:
   ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
   forcerange: ${robots.arm.actuator_config.default.forcerange}
-  kv: 800.0
+  actrange: ${robots.arm.actuator_config.default.actrange}
+  kp: 100.0
+  kv: 0.0
 joint2:
   ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
   forcerange: ${robots.arm.actuator_config.default.forcerange}
-  kv: 800.0
+  actrange: "-1.7628 1.7628"
+  kp: 100.0
+  kv: 0.0
 joint3:
   ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
   forcerange: ${robots.arm.actuator_config.default.forcerange}
-  kv: 800.0
+  actrange: ${robots.arm.actuator_config.default.actrange}
+  kp: 100.0
+  kv: 0.0
 joint4:
   ctrlrange: ${robots.arm.actuator_config.default.ctrlrange}
   forcerange: ${robots.arm.actuator_config.default.forcerange}
-  kv: 800.0
+  actrange: "-3.0718 -0.0698"
+  kp: 100.0
+  kv: 0.0
 joint5:
   ctrlrange: "-2.61 2.61"
   forcerange: "-12 12"
-  kv: 800.0
+  actrange: ${robots.arm.actuator_config.default.actrange}
+  kp: 100.0
+  kv: 0.0
 joint6:
   ctrlrange: "-2.61 2.61"
   forcerange: "-12 12"
-  kv: 800.0
+  actrange: "-0.0175 3.7525"
+  kp: 100.0
+  kv: 0.0
 joint7:
   ctrlrange: "-2.61 2.61"
   forcerange: "-12 12"
-  kv: 800.0
+  actrange: ${robots.arm.actuator_config.default.actrange}
+  kp: 100.0
+  kv: 0.0
 
 joint_actuator_mapping:
   joint1: "joint1"

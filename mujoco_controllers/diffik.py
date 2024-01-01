@@ -40,6 +40,11 @@ class DiffIK(MujocoController):
         self.num_arm_joints = len(self.arm_joints)
         self.eef_site = arm.attachment_site
         
+        # controller params
+        self.position_threshold = controller_config["convergence"]["position_threshold"]
+        self.orientation_threshold = controller_config["convergence"]["orientation_threshold"]
+
+
         # variables used for computing control output
         self._eef_jacobian = None
         self.control_timestep = controller_config["control_dt"]
@@ -125,19 +130,21 @@ class DiffIK(MujocoController):
     def compute_control_output(self):
         """Solve quadratic program to compute joint velocities."""
        
-        # compute twist from current eef state to target eef state
+        # compute desired twist from current eef state to target eef state
+        # in one control cycle (TODO: make this more stable)
         twist = np.zeros(6)
-        twist[:3] = (self.eef_target.position - self.current_eef_position)/self.control_timestep
+        twist[:3] = (self.eef_target.position - self.current_eef_position) / self.control_timestep
          
         vel = np.zeros(3,)
         quat_err = self._orientation_error(
             self.current_eef_quat,
             self.eef_target.quat,
         )
-        mujoco.mju_quat2Vel(vel, quat_err, 0.1)
+        mujoco.mju_quat2Vel(vel, quat_err, self.control_timestep)
         twist[3:] = vel
-        #twist *= self.control_timestep # scale by control timestep to get velocity
-        print("twist", twist)
+
+        # TODO: add scaling factor that gets tuned
+        #twist *= 0.05
 
         # define quadratic program Q, c
         self._compute_eef_jacobian()
@@ -155,7 +162,7 @@ class DiffIK(MujocoController):
 
         ## joint velocity limits
         vel_constraint_G = jnp.vstack([jnp.eye(self.num_arm_joints), -jnp.eye(self.num_arm_joints)])
-        vel_constraint_h = jnp.hstack([self.physics.model.actuator_ctrlrange[:7, 1], self.physics.model.actuator_ctrlrange[:7, 0]])
+        vel_constraint_h = jnp.hstack([self.physics.model.actuator_ctrlrange[:7, 1], -self.physics.model.actuator_ctrlrange[:7, 0]])
         
         ## combine all inequality constraints
         G = vel_constraint_G
@@ -163,9 +170,6 @@ class DiffIK(MujocoController):
         #G = jnp.vstack([pos_constraint_G, vel_constraint_G])
         #h = jnp.hstack([pos_constraint_h, vel_constraint_h])
         
-        #print("G", G)
-        #print("h", h)
-
         # run solver
         qp = OSQP()
         sol = qp.run(
@@ -173,14 +177,24 @@ class DiffIK(MujocoController):
             params_ineq=(G,h),
             ).params
         
-        print("control output", sol.primal)
 
         return sol.primal
-        
+    
 
+    # TODO: move to properties
+    def current_orientation_error(self):
+        quat_err = self._orientation_error(self.current_eef_quat, self.eef_target.quat)
+        return np.max(abs(np.sign(quat_err[0]) * quat_err[1:]))
+
+    def current_position_error(self):
+        return  np.linalg.norm(self.current_eef_position - self.eef_target.position)
+       
     def is_converged(self):
-        # TODO: implement this
-        return False
+        if (self.current_position_error() < self.position_threshold) and \
+                (self.current_orientation_error() < self.orientation_threshold):
+            return True
+        else:
+            return False
 
 
 if __name__ == "__main__":
@@ -235,7 +249,6 @@ if __name__ == "__main__":
         while (not converged): # ignore duration while debugging
             # compute control command
             arm_command = diffik.compute_control_output()
-            print(arm_command)
             gripper_command = np.array([0.0])
             control_command = np.hstack([arm_command, gripper_command])
 
