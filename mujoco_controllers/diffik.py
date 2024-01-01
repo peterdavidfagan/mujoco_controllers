@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import jax.numpy as jnp
 from scipy.spatial.transform import Rotation as R
 
 import mujoco
@@ -36,10 +37,12 @@ class DiffIK(MujocoController):
         self.arm = arm
         self.arm_joints = arm.joints
         self.arm_joint_ids = np.array(physics.bind(self.arm_joints).dofadr)
+        self.num_arm_joints = len(self.arm_joints)
         self.eef_site = arm.attachment_site
         
         # variables used for computing control output
         self._eef_jacobian = None
+        self.control_timestep = controller_config["control_dt"]
 
         # initialise without end effector targets
         self.eef_target = EEFTarget(
@@ -64,6 +67,48 @@ class DiffIK(MujocoController):
         jacr = jacr[:, self.arm_joint_ids] # filter jacobian for joints we care about
         self._eef_jacobian = np.vstack([jacp, jacr])
 
+    def _orientation_error(
+        self,
+        quat: np.ndarray,
+        quat_des: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Calculates the orientation error between two quaternions.
+
+        Implemented base on: Resolved-acceleration control of robot manipulators: A critical review with experiments.
+        Assumed that the quaternions are unit quaternions.
+        """
+        quat_conj = np.zeros(4,)
+        mujoco.mju_negQuat(quat_conj, quat)
+        quat_conj /= np.linalg.norm(quat_conj)
+
+        quat_err = np.zeros(4,)
+        mujoco.mju_mulQuat(quat_err, quat_des, quat_conj)
+        
+        return quat_err
+
+    @property
+    def current_eef_position(self):
+        return self.physics.bind(self.eef_site).xpos.copy()
+
+    @property
+    def current_eef_quat(self):
+        quat = np.zeros(4,)
+        rot_mat = self.physics.bind(self.eef_site).xmat.copy()
+        mujoco.mju_mat2Quat(quat, rot_mat)
+        # TODO: check if this is necessary the quaternion may already be normalized from mujoco
+        # ensure unit quaternion
+        quat /= np.linalg.norm(quat)
+        return quat
+
+    @property
+    def current_eef_velocity(self):
+        return self._eef_jacobian[:3,:] @ self.physics.data.qvel[self.arm_joint_ids]
+
+    @property
+    def current_eef_angular_velocity(self):
+        return self._eef_jacobian[3:,:] @ self.physics.data.qvel[self.arm_joint_ids]
+
     def set_target(self,
         position: np.ndarray = None,
         velocity: np.ndarray = None,
@@ -79,28 +124,47 @@ class DiffIK(MujocoController):
     
     def compute_control_output(self):
         """Solve quadratic program to compute joint velocities."""
-        
+       
+        # compute twist from current eef state to target eef state
+        twist = np.zeros(6)
+        twist[:3] = (self.eef_target.position - self.current_eef_position)/self.control_timestep
+         
+        vel = np.zeros(3,)
+        quat_err = self._orientation_error(
+            self.current_eef_quat,
+            self.eef_target.quat,
+        )
+        mujoco.mju_quat2Vel(vel, quat_err, 0.1)
+        twist[3:] = vel
+        #twist *= self.control_timestep # scale by control timestep to get velocity
+        print("twist", twist)
+
         # define quadratic program Q, c
         self._compute_eef_jacobian()
         Q = self._eef_jacobian.T @ self._eef_jacobian
-        c = self._eef_jacobian.T @ self.eef_target.velocity
+        c = -self._eef_jacobian.T @ twist
 
         # define equality constraints A, b
         # for now I don't have any equality constraints
-
+        
         # define inequality constraints G, h
         ## joint position limits
-        pos_constraint_G = jnp.vstack([jnp.eye(self.physics.model.nv), -jnp.eye(self.physics.model.nv)])
-        pos_constraint_G *= self.control_timestep # scale by control timestep to get more accurate limits
-        pos_constraint_h = jnp.hstack([self.physics.model.jnt_range[:, 1], -self.physics.model.jnt_range[:, 0]])
+        #pos_constraint_G = jnp.vstack([jnp.eye(self.num_arm_joints), -jnp.eye(self.num_arm_joints)])
+        #pos_constraint_G *= self.control_timestep # scale by control timestep to get more accurate limits
+        #pos_constraint_h = jnp.hstack([self.physics.model.jnt_range[self.arm_joint_ids, 1], self.physics.model.jnt_range[self.arm_joint_ids, 0]])
 
         ## joint velocity limits
-        vel_constraint_G = jnp.vstack([jnp.eye(self.physics.model.nv), -jnp.eye(self.physics.model.nv)])
-        vel_constraint_h = jnp.hstack([self.physics.model.jnt_range[:, 1], -self.physics.model.jnt_range[:, 0]])
+        vel_constraint_G = jnp.vstack([jnp.eye(self.num_arm_joints), -jnp.eye(self.num_arm_joints)])
+        vel_constraint_h = jnp.hstack([self.physics.model.actuator_ctrlrange[:7, 1], self.physics.model.actuator_ctrlrange[:7, 0]])
         
         ## combine all inequality constraints
-        G = jnp.vstack([pos_constraint_G, vel_constraint_G])
-        h = jnp.hstack([pos_constraint_h, vel_constraint_h])
+        G = vel_constraint_G
+        h = vel_constraint_h
+        #G = jnp.vstack([pos_constraint_G, vel_constraint_G])
+        #h = jnp.hstack([pos_constraint_h, vel_constraint_h])
+        
+        #print("G", G)
+        #print("h", h)
 
         # run solver
         qp = OSQP()
@@ -109,14 +173,14 @@ class DiffIK(MujocoController):
             params_ineq=(G,h),
             ).params
         
-        # TODO: understand solver outputs 
-        # wish to fetch joint velocity values
+        print("control output", sol.primal)
 
-        #return sol
+        return sol.primal
         
 
     def is_converged(self):
-        pass
+        # TODO: implement this
+        return False
 
 
 if __name__ == "__main__":
@@ -129,12 +193,11 @@ if __name__ == "__main__":
     cfg = compose(
             config_name="itl_rearrangement", 
             overrides=[
+                "control_dt=0.1", # frequency of diffik controller
                 "robots/arm/controller_config=diffik", 
                 "robots/arm/actuator_config=velocity",
                 ]
             )
-
-    print(cfg)
 
     # ensure mjcf paths are relative to this file (TODO: make this cleaner)
     file_path = Path(__file__).parent.absolute()
@@ -169,9 +232,10 @@ if __name__ == "__main__":
         duration = 5
         converged = False
         start_time = physics.data.time
-        while (physics.data.time - start_time < duration) and (not converged):
+        while (not converged): # ignore duration while debugging
             # compute control command
             arm_command = diffik.compute_control_output()
+            print(arm_command)
             gripper_command = np.array([0.0])
             control_command = np.hstack([arm_command, gripper_command])
 
@@ -182,6 +246,6 @@ if __name__ == "__main__":
                 if passive_view is not None:
                     passive_view.sync()
 
-                if osc.is_converged():
+                if diffik.is_converged():
                     converged = True
                     break
