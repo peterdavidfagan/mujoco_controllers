@@ -3,10 +3,20 @@ Differential Inverse Kinematics with various constraints.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
+import mujoco
+from mujoco import viewer
+from mujoco_controllers import MujocoController
+from mujoco_controllers.build_env import construct_physics
 
 from jaxopt import OSQP
-from mujoco_controllers import MujocoController
 
+from hydra import compose, initialize
+from hydra.utils import instantiate
 
 @dataclass
 class EEFTarget:
@@ -73,13 +83,12 @@ class DiffIK(MujocoController):
         # define quadratic program Q, c
         self._compute_eef_jacobian()
         Q = self._eef_jacobian.T @ self._eef_jacobian
-        c = -2 * self._eef_jacobian.T @ self.eef_target.velocity
+        c = self._eef_jacobian.T @ self.eef_target.velocity
 
         # define equality constraints A, b
         # for now I don't have any equality constraints
 
         # define inequality constraints G, h
-        
         ## joint position limits
         pos_constraint_G = jnp.vstack([jnp.eye(self.physics.model.nv), -jnp.eye(self.physics.model.nv)])
         pos_constraint_G *= self.control_timestep # scale by control timestep to get more accurate limits
@@ -112,23 +121,29 @@ class DiffIK(MujocoController):
 
 if __name__ == "__main__":
 
-    raise NotImplementedError
-    
     # save default configs (TODO: move to keyframe)
     ready_config = np.array([0, -0.785, 0, -2.356, 0, 1.571, 0.785])
 
     # load different robot configurations
     initialize(version_base=None, config_path="./config", job_name="default_config")
-    cfg = compose(config_name="itl_rearrangement")
-    
-    # ensure mjcf paths are relative to this file
+    cfg = compose(
+            config_name="itl_rearrangement", 
+            overrides=[
+                "robots/arm/controller_config=diffik", 
+                "robots/arm/actuator_config=velocity",
+                ]
+            )
+
+    print(cfg)
+
+    # ensure mjcf paths are relative to this file (TODO: make this cleaner)
     file_path = Path(__file__).parent.absolute()
     cfg.robots.arm.arm.mjcf_path = str(file_path / cfg.robots.arm.arm.mjcf_path)
     cfg.robots.end_effector.end_effector.mjcf_path = str(file_path / cfg.robots.end_effector.end_effector.mjcf_path)
 
     # instantiate physics and controller
     physics, passive_view, arm, gripper = construct_physics(cfg)
-    osc = arm.controller_config.controller(physics, arm) # super unclean fix this
+    diffik = arm.controller_config.controller(physics, arm) # super unclean fix this
     control_steps = int(arm.controller_config.controller_params.control_dt // physics.model.opt.timestep)
 
     # run controller to random targets
@@ -144,7 +159,7 @@ if __name__ == "__main__":
         mat = obj_rot = R.from_euler('xyz', [0, 180, 0], degrees=True).as_matrix().flatten()
         mujoco.mju_mat2Quat(quat, mat)
 
-        osc.set_target(
+        diffik.set_target(
             position=position,
             velocity=np.zeros(3),
             quat=quat,
@@ -156,7 +171,7 @@ if __name__ == "__main__":
         start_time = physics.data.time
         while (physics.data.time - start_time < duration) and (not converged):
             # compute control command
-            arm_command = osc.compute_control_output()
+            arm_command = diffik.compute_control_output()
             gripper_command = np.array([0.0])
             control_command = np.hstack([arm_command, gripper_command])
 

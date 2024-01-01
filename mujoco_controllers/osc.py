@@ -16,7 +16,6 @@ import mujoco
 from mujoco import viewer
 
 from dm_control import composer, mjcf
-from dm_robotics.transformations import transformations as tr
 
 from mujoco_controllers.build_env import construct_physics
 

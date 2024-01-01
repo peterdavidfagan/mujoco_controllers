@@ -62,6 +62,16 @@ class FER(robot_arm.RobotArm):
                     **self.actuator_config[joint_type],
                 )
                 actuator.joint = self._joints[idx]
+        
+        elif self.actuator_config["type"] == "intvelocity":
+            for idx, (joint, joint_type) in enumerate(self.actuator_config["joint_actuator_mapping"].items()):
+                print("Adding actuator for joint: {}".format(joint))
+                actuator = self._fer_root.actuator.add(
+                    "intvelocity",
+                    name="actuator{}".format(idx + 1),
+                    **self.actuator_config[joint_type],
+                )
+                actuator.joint = self._joints[idx]
 
         else:
             raise ValueError("Unsupported actuator model: {}".format(self.actuator_model))
