@@ -17,6 +17,9 @@ authors = [
 ]
 readme = "README.md"
 
+[tool.setuptools]
+py-modules=["mujoco_controllers"]
+
 [tool.poetry.dependencies]
 python = "3.10.6"
 numpy = "^1.16.0"
