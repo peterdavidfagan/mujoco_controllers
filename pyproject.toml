@@ -22,7 +22,7 @@ py-modules=["mujoco_controllers"]
 
 [tool.poetry.dependencies]
 python = "3.10.6"
-numpy = "^1.16.0"
+numpy = "^1.2.0"
 mujoco = "3.1.1"
 dm-control = "1.0.16"
 ikpy = "3.3.4"
