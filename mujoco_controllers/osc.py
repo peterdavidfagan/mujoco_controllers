@@ -19,7 +19,6 @@ from dm_control import composer, mjcf
 
 from mujoco_controllers.build_env import construct_physics
 
-from ikpy.chain import Chain
 from hydra import compose, initialize
 from hydra.utils import instantiate
 
