@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "mujoco_controllers"
-version = "0.0.0"
+version = "0.0.1"
 description = "A repository for debugging controller implementations applied to mujoco models."
 authors = [
 	{ name = "Peter David Fagan", email = "peterdavidfagan@gmail.com" }
@@ -9,13 +13,16 @@ readme = "README.md"
 
 [tool.poetry]
 name = "mujoco_controllers"
-version = "0.0.0"
+version = "0.0.1"
 description = "A repository for debugging controller implementations applied to mujoco models."
 license = "Apache-2.0"
 authors = [
 	"Peter David Fagan <peterdavidfagan@gmail.com>"
 ]
 readme = "README.md"
+packages = [
+	{include = "mujoco_controllers"}
+]
 
 [tool.setuptools]
 py-modules=["mujoco_controllers"]
