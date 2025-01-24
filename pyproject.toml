@@ -30,8 +30,8 @@ py-modules=["mujoco_controllers"]
 [tool.poetry.dependencies]
 python = "3.10.6"
 numpy = "^1.16.0"
-mujoco = "3.1.1"
-dm-control = "1.0.16"
+mujoco = "3.2.6"
+dm-control = "1.0.26"
 pillow = "10.0.0"
 jax = "^0.4.14"
 matplotlib = "^3.7.2"

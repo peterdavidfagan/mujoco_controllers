@@ -222,7 +222,16 @@ class OSC(object):
         tau += self.physics.data.qfrc_bias[self.arm_joint_ids]
 
         # compute effective torque
-        actuator_moment_inv = np.linalg.pinv(self.physics.data.actuator_moment)
+        actuator_moment_mat = np.zeros((self.physics.model.nu, self.physics.model.nv))
+        mujoco.mju_sparse2dense(
+            actuator_moment_mat,
+            self.physics.data.actuator_moment,
+            self.physics.data.moment_rownnz,
+            self.physics.data.moment_rowadr,
+            self.physics.data.moment_colind,
+        )                    
+
+        actuator_moment_inv = np.linalg.pinv(actuator_moment_mat)
         actuator_moment_inv = actuator_moment_inv[self.arm_joint_ids, :][:, self.arm_joint_ids]
         tau = tau @ actuator_moment_inv 
 
